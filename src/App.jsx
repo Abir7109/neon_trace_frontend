@@ -53,10 +53,16 @@ export default function App() {
       setOrigin(a)
       setDest(b)
       const t0 = performance.now()
+      let payload
+      try {
+        payload = JSON.stringify({ origin: a, destination: b, profile })
+      } catch {
+        throw new Error('payload_build_failed')
+      }
       const resp = await fetch(`${API_BASE}/api/route`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ origin: a, destination: b, profile }),
+        body: payload,
       })
       if (!resp.ok) throw new Error('Routing failed')
       const data = await resp.json()
