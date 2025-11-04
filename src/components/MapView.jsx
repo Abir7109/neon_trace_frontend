@@ -68,8 +68,14 @@ export default function MapView({ origin, dest, route, onMapClicks }) {
     if (!map || !route) return
     const { glow, halo } = layerRef.current
 
+    // Guard against bad data
+    const pts = Array.isArray(route.coords) ? route.coords : []
+    if (!pts.length) return
+
+    // Fit to route
+    try { map.fitBounds(L.latLngBounds(pts).pad(0.2)) } catch {}
+
     // Animate drawing
-    const pts = route.coords
     let i = 0
     glow.setLatLngs([])
     halo.setLatLngs([])
