@@ -33,14 +33,14 @@ export default function App() {
     return res
   }
 
-  async function traceRoute() {
+  async function traceRoute(aOverride = null, bOverride = null) {
     try {
       setBusy(true)
       setLogs([])
       sfx.type()
       const [a, b] = await Promise.all([
-        origin ? Promise.resolve(origin) : resolveCoord(originText),
-        dest ? Promise.resolve(dest) : resolveCoord(destText),
+        aOverride ?? (origin ? Promise.resolve(origin) : resolveCoord(originText)),
+        bOverride ?? (dest ? Promise.resolve(dest) : resolveCoord(destText)),
       ])
       setOrigin(a)
       setDest(b)
@@ -142,7 +142,7 @@ export default function App() {
           </div>
         </section>
         <section className="right">
-          <MapView origin={origin} dest={dest} route={route} onMapClicks={({ a, b }) => { setOrigin(a); setDest(b) }} />
+          <MapView origin={origin} dest={dest} route={route} onMapClicks={({ a, b }) => { setOrigin(a); setDest(b); traceRoute(a, b) }} />
         </section>
       </main>
     </div>
