@@ -1,10 +1,13 @@
 import React, { useEffect, useRef } from 'react'
 import L from 'leaflet'
-import marker2x from 'leaflet/dist/images/marker-icon-2x.png'
-import marker from 'leaflet/dist/images/marker-icon.png'
-import shadow from 'leaflet/dist/images/marker-shadow.png'
 
-L.Icon.Default.mergeOptions({ iconRetinaUrl: marker2x, iconUrl: marker, shadowUrl: shadow })
+// Custom neon divIcons (avoids broken image URLs)
+const makePin = (color = '#00ffd0') => L.divIcon({
+  className: 'neon-pin-wrap',
+  html: `<div class="neon-pin" style="--pin:${color}"></div>`,
+  iconSize: [16, 16],
+  iconAnchor: [8, 8],
+})
 
 export default function MapView({ origin, dest, route, onMapClicks }) {
   const mapRef = useRef(null)
@@ -19,14 +22,21 @@ export default function MapView({ origin, dest, route, onMapClicks }) {
     }).setView([40.7128, -74.006], 6)
     mapRef.current = map
 
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    // Dark basemap
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
       maxZoom: 19,
+      attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
     }).addTo(map)
 
-    const glow = L.polyline([], { color: '#008170', weight: 4, opacity: 0.95 }).addTo(map)
-    const halo = L.polyline([], { color: '#00ffd0', weight: 10, opacity: 0.15 }).addTo(map)
-    const aMarker = L.marker([0, 0])
-    const bMarker = L.marker([0, 0])
+    // High z-index pane for route
+    map.createPane('routes')
+    map.getPane('routes').style.zIndex = 650
+
+    const glow = L.polyline([], { color: '#00ffd0', weight: 5, opacity: 0.95, pane: 'routes', className: 'neon-route' }).addTo(map)
+    const halo = L.polyline([], { color: '#00ffd0', weight: 12, opacity: 0.18, pane: 'routes', className: 'neon-route-halo' }).addTo(map)
+
+    const aMarker = L.marker([0, 0], { icon: makePin('#00ffd0') })
+    const bMarker = L.marker([0, 0], { icon: makePin('#008170') })
     layerRef.current = { glow, halo, aMarker, bMarker }
 
     map.on('click', (e) => {
@@ -63,11 +73,12 @@ export default function MapView({ origin, dest, route, onMapClicks }) {
     let i = 0
     glow.setLatLngs([])
     halo.setLatLngs([])
+    const step = Math.max(1, Math.floor(pts.length / 250))
     const timer = setInterval(() => {
-      i += Math.max(1, Math.floor(pts.length / 200))
+      i += step
       const slice = pts.slice(0, Math.min(i, pts.length))
-      glow.setLatLngs(slice)
-      halo.setLatLngs(slice)
+      glow.setLatLngs(slice).bringToFront()
+      halo.setLatLngs(slice).bringToFront()
       if (i >= pts.length) clearInterval(timer)
     }, 16)
 
