@@ -38,10 +38,14 @@ export default function App() {
       setBusy(true)
       setLogs([])
       sfx.type()
-      const [a, b] = await Promise.all([
+      const normalize = (p) => (p && typeof p.lat === 'number' && typeof p.lng === 'number') ? { lat: +p.lat, lng: +p.lng } : null
+      const [aRaw, bRaw] = await Promise.all([
         aOverride ?? (origin ? Promise.resolve(origin) : resolveCoord(originText)),
         bOverride ?? (dest ? Promise.resolve(dest) : resolveCoord(destText)),
       ])
+      const a = normalize(aRaw)
+      const b = normalize(bRaw)
+      if (!a || !b) throw new Error('invalid coordinates')
       setOrigin(a)
       setDest(b)
       const t0 = performance.now()
@@ -120,7 +124,7 @@ export default function App() {
                 <option value="foot-walking">foot-walking</option>
                 <option value="cycling-regular">cycling-regular</option>
               </select>
-              <button className="btn" onClick={traceRoute} disabled={busy}>{busy ? 'Tracing…' : 'Trace Route'}</button>
+              <button className="btn" onClick={() => traceRoute()} disabled={busy}>{busy ? 'Tracing…' : 'Trace Route'}</button>
             </div>
             <div className="row small">
               <label><input type="checkbox" checked={hackerMode} onChange={(e) => setHackerMode(e.target.checked)} /> hacker mode</label>
@@ -142,7 +146,7 @@ export default function App() {
           </div>
         </section>
         <section className="right">
-          <MapView origin={origin} dest={dest} route={route} onMapClicks={({ a, b }) => { setOrigin(a); setDest(b); traceRoute(a, b) }} />
+          <MapView origin={origin} dest={dest} route={route} onMapClicks={({ a, b }) => { const A={lat:+a.lat,lng:+a.lng}; const B={lat:+b.lat,lng:+b.lng}; setOrigin(A); setDest(B); traceRoute(A, B) }} />
         </section>
       </main>
     </div>
