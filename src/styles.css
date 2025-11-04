@@ -1,0 +1,63 @@
+:root {
+  --bg: #0F0F0F;
+  --panel: #232D3F;
+  --btn: #005B41;
+  --glow: #008170;
+  --text: #d8f3e8;
+  --muted: #7aa39a;
+}
+* { box-sizing: border-box }
+html, body, #root { height: 100% }
+body { margin: 0; background: var(--bg); color: var(--text); font-family: 'Fira Code', 'Courier Prime', monospace; }
+
+.header { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; background: #0b0b0b; border-bottom: 1px solid #0a1a18; position: sticky; top: 0; z-index: 10 }
+.logo { color: var(--glow); text-shadow: 0 0 8px rgba(0, 225, 208, 0.5); font-weight: 700; letter-spacing: 2px }
+nav a { color: var(--muted); margin-left: 16px; text-decoration: none }
+nav a:hover { color: var(--text); text-shadow: 0 0 4px var(--glow) }
+
+.main { display: grid; grid-template-columns: 380px 1fr; height: calc(100% - 50px) }
+.left { padding: 12px; overflow: auto }
+.right { position: relative }
+
+.panel { background: var(--panel); border: 1px solid #0b2622; border-radius: 8px; padding: 12px; margin-bottom: 12px; box-shadow: 0 0 24px rgba(0, 225, 208, 0.06) }
+.panel label { display: block; font-size: 12px; color: var(--muted); margin-top: 8px }
+.row { display: flex; gap: 8px; align-items: center; margin-top: 10px }
+.row.small { font-size: 12px; justify-content: space-between }
+
+.terminal { width: 100%; background: #0a0e11; color: var(--text); border: 1px solid #0b2622; border-radius: 6px; padding: 8px 10px; outline: none; caret-color: var(--glow) }
+.terminal:focus { border-color: var(--glow); box-shadow: 0 0 0 2px rgba(0, 225, 208, 0.15), 0 0 12px rgba(0, 225, 208, 0.2) }
+
+.btn { background: var(--btn); color: #d4fff7; border: 1px solid #0b2622; padding: 8px 12px; border-radius: 6px; cursor: pointer }
+.btn:hover { filter: brightness(1.1); box-shadow: 0 0 12px rgba(0, 225, 208, 0.2) }
+.btn:disabled { opacity: 0.5; cursor: not-allowed }
+
+.console { height: 320px; display: flex; flex-direction: column }
+.console-log { flex: 1; background: #07090b; border: 1px solid #0b2622; border-radius: 6px; padding: 8px; overflow: auto; font-size: 12px }
+.log-line { padding: 2px 0; color: #aee7db }
+
+.console-input { margin-top: 8px; display: grid; grid-template-columns: auto 1fr auto; gap: 8px; align-items: center }
+.prompt { color: var(--glow) }
+.caret { width: 8px; height: 18px; background: var(--glow); animation: blink 1s steps(2, start) infinite }
+@keyframes blink { 0%, 50% { opacity: 0 } 51%, 100% { opacity: 1 } }
+
+.footer { display: flex; justify-content: space-between; color: var(--muted); font-size: 12px; padding: 0 4px }
+.footer a { color: var(--muted) }
+.footer a:hover { color: var(--text) }
+
+.map { position: absolute; inset: 0; filter: drop-shadow(0 0 8px rgba(0, 225, 208, 0.2)); }
+.leaflet-pane .leaflet-interactive { filter: drop-shadow(0 0 6px rgba(0, 225, 208, 0.7)); }
+
+/* matrix background when hacker mode */
+body.hacker::before { content: ""; position: fixed; inset: 0; pointer-events: none; background: repeating-linear-gradient( to bottom, rgba(0, 255, 204, 0.025), rgba(0, 0, 0, 0.0) 2px ); animation: fall 12s linear infinite; mix-blend-mode: screen }
+@keyframes fall { from { background-position-y: 0 } to { background-position-y: 1000px } }
+
+/* glitch hover */
+.logo:hover { animation: glitch 500ms steps(2, end) infinite }
+@keyframes glitch { 0% { text-shadow: 3px 0 rgba(0, 225, 208, 0.5), -3px 0 rgba(0, 255, 128, 0.3) } 100% { text-shadow: -3px 0 rgba(0, 225, 208, 0.5), 3px 0 rgba(0, 255, 128, 0.3) } }
+
+/* hack sequence flash */
+body.hack-sequence::after { content: "ACCESS DENIED"; font-weight: 700; letter-spacing: 8px; color: #ff4d4d; text-shadow: 0 0 16px rgba(255,77,77,0.5); position: fixed; inset: 0; display: grid; place-items: center; background: rgba(0,0,0,0.6); animation: pop 0.4s ease }
+@keyframes pop { from { transform: scale(1.05); opacity: 0 } to { transform: scale(1); opacity: 1 } }
+
+/* responsive */
+@media (max-width: 1024px) { .main { grid-template-columns: 1fr; } .right { height: 60vh } }
