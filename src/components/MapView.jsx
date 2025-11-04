@@ -9,6 +9,18 @@ const makePin = (color = '#00ffd0') => L.divIcon({
   iconAnchor: [8, 8],
 })
 
+function toLL(p) {
+  if (!p) return null
+  if (typeof p.lat === 'number' && typeof p.lng === 'number' && isFinite(p.lat) && isFinite(p.lng)) return L.latLng(p.lat, p.lng)
+  if (Array.isArray(p) && p.length >= 2) {
+    const a = Number(p[0]); const b = Number(p[1])
+    // Try [lat,lng] first; if invalid, swap
+    if (isFinite(a) && isFinite(b) && Math.abs(a) <= 90 && Math.abs(b) <= 180) return L.latLng(a, b)
+    if (isFinite(a) && isFinite(b)) return L.latLng(b, a)
+  }
+  return null
+}
+
 export default function MapView({ origin, dest, route, onMapClicks }) {
   const mapRef = useRef(null)
   const layerRef = useRef({})
@@ -57,10 +69,12 @@ export default function MapView({ origin, dest, route, onMapClicks }) {
     const map = mapRef.current
     if (!map || !origin || !dest) return
     const { aMarker, bMarker } = layerRef.current
-    aMarker.setLatLng(origin).addTo(map)
-    bMarker.setLatLng(dest).addTo(map)
+    const o = toLL(origin); const d = toLL(dest)
+    if (!o || !d) return
+    aMarker.setLatLng(o).addTo(map)
+    bMarker.setLatLng(d).addTo(map)
     L.featureGroup([aMarker, bMarker]).addTo(map)
-    map.fitBounds(L.latLngBounds([origin, dest]).pad(0.3))
+    map.fitBounds(L.latLngBounds([o, d]).pad(0.3))
   }, [origin, dest])
 
   useEffect(() => {
@@ -69,8 +83,9 @@ export default function MapView({ origin, dest, route, onMapClicks }) {
     const { glow, halo } = layerRef.current
 
     // Guard against bad data
-    const pts = Array.isArray(route.coords) ? route.coords : []
-    if (!pts.length) return
+    const raw = Array.isArray(route.coords) ? route.coords : []
+    const pts = raw.map(toLL).filter(Boolean)
+    if (pts.length < 2) return
 
     // Fit to route
     try { map.fitBounds(L.latLngBounds(pts).pad(0.2)) } catch {}
