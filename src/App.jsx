@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react'
 import MapView from './components/MapView'
 import { geocode } from './lib/geocode'
 import { SFX } from './lib/sfx'
-import { getOrCreateDevice, saveDeviceName } from './lib/device'
+import { getOrCreateDevice, saveDeviceName, detectAndSaveDeviceName } from './lib/device'
 
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:3001'
 
@@ -28,16 +28,22 @@ export default function App() {
     document.body.classList.toggle('hacker', hackerMode)
   }, [hackerMode])
 
-  // Load device profile and prior saved info
+  // Load device profile and prior saved info, detect device name via Capacitor if available,
+  // and prompt for location permission to start live tracking.
   useEffect(() => {
     const dev = getOrCreateDevice()
     ;(async () => {
       try {
-        const r = await fetch(`${API_BASE}/api/me?deviceId=${encodeURIComponent(dev.deviceId)}`)
+        // Enhance device name if plugin available
+        const updated = await detectAndSaveDeviceName()
+        setMe(updated)
+        const r = await fetch(`${API_BASE}/api/me?deviceId=${encodeURIComponent(updated.deviceId)}`)
         const data = r.ok ? await r.json() : { me: null }
-        setMe(data.me || dev)
+        if (data.me) setMe({ ...updated, ...data.me })
         if (data.me?.lastLocation) setSelf(data.me.lastLocation)
       } catch {}
+      // Auto-ask for location and start watch
+      requestAndWatchLocation()
     })()
   }, [])
 
@@ -133,12 +139,31 @@ export default function App() {
     }
   }
 
-  async function shareLocation() {
-    if (!('geolocation' in navigator)) { setLogs((p)=>[...p,'error=geolocation_unavailable']); return }
+  async function requestAndWatchLocation() {
     try {
-      // ensure device profile
       const dev = me || getOrCreateDevice()
-      // watch position
+      // Try Capacitor Geolocation first
+      try {
+        const { Geolocation } = await import('@capacitor/geolocation')
+        await Geolocation.requestPermissions()
+        if (watchRef.current) Geolocation.clearWatch({ id: watchRef.current })
+        watchRef.current = await Geolocation.watchPosition({ enableHighAccuracy: true }, async (pos, err) => {
+          if (err) { setLogs((p)=>[...p, `geo_error=${err.code||'err'}`]); return }
+          if (!pos) return
+          const coords = { lat: pos.coords.latitude, lng: pos.coords.longitude }
+          setSelf(coords)
+          try {
+            const resp = await fetch(`${API_BASE}/api/me`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ deviceId: dev.deviceId, deviceName: dev.deviceName, location: coords }) })
+            const data = await resp.json().catch(()=>null)
+            if (resp.ok && data?.me) setMe(data.me)
+          } catch {}
+        })
+        setLogs((p)=>[...p,'geolocation=watching'])
+        return
+      } catch {}
+
+      // Fallback to browser geolocation
+      if (!('geolocation' in navigator)) { setLogs((p)=>[...p,'error=geolocation_unavailable']); return }
       if (watchRef.current) navigator.geolocation.clearWatch(watchRef.current)
       watchRef.current = navigator.geolocation.watchPosition(async (pos) => {
         const coords = { lat: pos.coords.latitude, lng: pos.coords.longitude }
@@ -156,6 +181,9 @@ export default function App() {
       setLogs((p)=>[...p,'error='+e.message])
     }
   }
+
+  // Manual trigger from UI remains available
+  function shareLocation() { requestAndWatchLocation() }
 
   function updateDeviceName(name) {
     const next = saveDeviceName(name)

@@ -19,6 +19,17 @@ export function saveDeviceName(name) {
   return next
 }
 
+export async function detectAndSaveDeviceName() {
+  try {
+    const { Device } = await import('@capacitor/device')
+    const info = await Device.getInfo()
+    const name = (info.name || info.model || defaultDeviceName()).slice(0, 100)
+    return saveDeviceName(name)
+  } catch {
+    return getOrCreateDevice()
+  }
+}
+
 function defaultDeviceName() {
   const ua = navigator.userAgent || 'Unknown Device'
   const m = ua.match(/\(([^\)]+)\)/)
