@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import MapView from './components/MapView'
-import { geocode } from './lib/geocode'
+import { geocode, reverseGeocode } from './lib/geocode'
 import { SFX } from './lib/sfx'
 import { getOrCreateDevice, saveDeviceName, detectAndSaveDeviceName } from './lib/device'
 
@@ -343,7 +343,26 @@ export default function App() {
           </div>
         </section>
         <section className="right">
-          <MapView origin={origin} dest={dest} route={route} self={self} onMapClicks={({ a, b }) => { const A={lat:+a.lat,lng:+a.lng}; const B={lat:+b.lat,lng:+b.lng}; setOrigin(A); setDest(B); traceRoute(A, B) }} />
+          <MapView
+            origin={origin}
+            dest={dest}
+            route={route}
+            self={self}
+            useSelfAsOrigin={useSelfAsOrigin && !!self}
+            onSelect={async (sel) => {
+              if (sel.dest && self) {
+                const D = { lat: +sel.dest.lat, lng: +sel.dest.lng }
+                setDest(D)
+                const name = await reverseGeocode(D)
+                setDestText(name || `${D.lat.toFixed(5)},${D.lng.toFixed(5)}`)
+                traceRoute(self, D)
+              } else if (sel.a && sel.b) {
+                const A = { lat:+sel.a.lat, lng:+sel.a.lng }
+                const B = { lat:+sel.b.lat, lng:+sel.b.lng }
+                setOrigin(A); setDest(B); traceRoute(A,B)
+              }
+            }}
+          />
           {locError && (
             <div className="overlay">
               <div className="overlay-card">

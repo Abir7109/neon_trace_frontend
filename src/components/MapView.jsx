@@ -21,7 +21,7 @@ function toLL(p) {
   return null
 }
 
-export default function MapView({ origin, dest, route, self, onMapClicks }) {
+export default function MapView({ origin, dest, route, self, useSelfAsOrigin=false, onSelect }) {
   const mapRef = useRef(null)
   const layerRef = useRef({})
   const clickState = useRef({ step: 0, a: null })
@@ -30,6 +30,7 @@ export default function MapView({ origin, dest, route, self, onMapClicks }) {
     const map = L.map('map', {
       zoomControl: false,
       attributionControl: false,
+      doubleClickZoom: false,
       minZoom: 2,
     }).setView([40.7128, -74.006], 6)
     mapRef.current = map
@@ -52,14 +53,20 @@ export default function MapView({ origin, dest, route, self, onMapClicks }) {
     const selfMarker = L.circleMarker([0, 0], { radius: 7, color: '#00ffd0', weight: 2, fillColor: '#00ffd0', fillOpacity: 0.6 }).bindTooltip('You', { permanent: false })
     layerRef.current = { glow, halo, aMarker, bMarker, selfMarker }
 
-    map.on('click', (e) => {
+    map.on('dblclick', (e) => {
+      if (useSelfAsOrigin && self) {
+        // Treat double-tap as destination from live origin
+        bMarker.setLatLng(e.latlng).addTo(map)
+        onSelect?.({ dest: e.latlng })
+        return
+      }
       if (clickState.current.step === 0) {
         clickState.current = { step: 1, a: e.latlng }
         aMarker.setLatLng(e.latlng).addTo(map)
       } else {
         bMarker.setLatLng(e.latlng).addTo(map)
         clickState.current = { step: 0, a: null }
-        onMapClicks?.({ a: aMarker.getLatLng(), b: bMarker.getLatLng() })
+        onSelect?.({ a: aMarker.getLatLng(), b: bMarker.getLatLng() })
       }
     })
 

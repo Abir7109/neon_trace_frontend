@@ -10,3 +10,16 @@ export async function geocode(q) {
   const { lat, lon } = arr[0]
   return { lat: parseFloat(lat), lng: parseFloat(lon) }
 }
+
+export async function reverseGeocode({ lat, lng }) {
+  try {
+    const url = new URL('https://nominatim.openstreetmap.org/reverse')
+    url.searchParams.set('lat', String(lat))
+    url.searchParams.set('lon', String(lng))
+    url.searchParams.set('format', 'jsonv2')
+    const resp = await fetch(url.toString(), { headers: { 'Accept-Language': 'en', 'User-Agent': 'neon-trace-demo' } })
+    if (!resp.ok) return null
+    const data = await resp.json()
+    return data && (data.name || data.display_name) ? (data.name || data.display_name) : null
+  } catch { return null }
+}
