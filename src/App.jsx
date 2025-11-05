@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react'
 import MapView from './components/MapView'
 import { geocode } from './lib/geocode'
 import { SFX } from './lib/sfx'
+import { getOrCreateDevice, saveDeviceName } from './lib/device'
 
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:3001'
 
@@ -17,12 +18,28 @@ export default function App() {
   const [profile, setProfile] = useState('driving-car')
   const [hackerMode, setHackerMode] = useState(true)
   const [consoleInput, setConsoleInput] = useState('')
+  const [me, setMe] = useState(null) // { deviceId, deviceName, ip, lastLocation }
+  const [self, setSelf] = useState(null) // live location {lat,lng}
+  const watchRef = useRef(null)
 
   const sfx = useMemo(() => new SFX({ enabled: !mute }), [mute])
 
   useEffect(() => {
     document.body.classList.toggle('hacker', hackerMode)
   }, [hackerMode])
+
+  // Load device profile and prior saved info
+  useEffect(() => {
+    const dev = getOrCreateDevice()
+    ;(async () => {
+      try {
+        const r = await fetch(`${API_BASE}/api/me?deviceId=${encodeURIComponent(dev.deviceId)}`)
+        const data = r.ok ? await r.json() : { me: null }
+        setMe(data.me || dev)
+        if (data.me?.lastLocation) setSelf(data.me.lastLocation)
+      } catch {}
+    })()
+  }, [])
 
   async function resolveCoord(text) {
     // coord literal: lat,lng
@@ -116,8 +133,37 @@ export default function App() {
     }
   }
 
+  async function shareLocation() {
+    if (!('geolocation' in navigator)) { setLogs((p)=>[...p,'error=geolocation_unavailable']); return }
+    try {
+      // ensure device profile
+      const dev = me || getOrCreateDevice()
+      // watch position
+      if (watchRef.current) navigator.geolocation.clearWatch(watchRef.current)
+      watchRef.current = navigator.geolocation.watchPosition(async (pos) => {
+        const coords = { lat: pos.coords.latitude, lng: pos.coords.longitude }
+        setSelf(coords)
+        try {
+          const resp = await fetch(`${API_BASE}/api/me`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ deviceId: dev.deviceId, deviceName: dev.deviceName, location: coords }) })
+          const data = await resp.json().catch(()=>null)
+          if (resp.ok && data?.me) setMe(data.me)
+        } catch {}
+      }, (err) => {
+        setLogs((p)=>[...p, `geo_error=${err.code}`])
+      }, { enableHighAccuracy: true, maximumAge: 5000, timeout: 10000 })
+      setLogs((p)=>[...p,'geolocation=watching'])
+    } catch (e) {
+      setLogs((p)=>[...p,'error='+e.message])
+    }
+  }
+
+  function updateDeviceName(name) {
+    const next = saveDeviceName(name)
+    setMe((m) => ({ ...(m||{}), ...next }))
+  }
+
   return (
-    <div className="app">
+    <div className=\"app\">
       <header className="header">
         <div className="logo" aria-label="logo">NEON TRACE ▓▓</div>
         <nav>
@@ -129,7 +175,21 @@ export default function App() {
       </header>
       <main className="main">
         <section className="left">
-          <div className="panel">
+          <div className=\"panel\">
+            <label>Device</label>
+            <div className=\"row\">
+              <input className=\"terminal\" value={(me?.deviceName)||''} onChange={(e)=>updateDeviceName(e.target.value)} placeholder=\"device name\" />
+            </div>
+            <div className=\"row small\">
+              <div style={{opacity:.8}}>id: {(me?.deviceId)||'…'}</div>
+            </div>
+            <div className=\"row\">
+              <button className=\"btn\" onClick={shareLocation}>Share Live Location</button>
+              {me?.ip && <span style={{fontSize:12,opacity:.7}}>ip {me.ip}</span>}
+            </div>
+          </div>
+
+          <div className=\"panel\">
             <label>Origin</label>
             <input className="terminal" value={originText} onChange={(e) => setOriginText(e.target.value)} placeholder="lat,lng or place" />
             <label>Destination</label>
@@ -162,7 +222,7 @@ export default function App() {
           </div>
         </section>
         <section className="right">
-          <MapView origin={origin} dest={dest} route={route} onMapClicks={({ a, b }) => { const A={lat:+a.lat,lng:+a.lng}; const B={lat:+b.lat,lng:+b.lng}; setOrigin(A); setDest(B); traceRoute(A, B) }} />
+          <MapView origin={origin} dest={dest} route={route} self={self} onMapClicks={({ a, b }) => { const A={lat:+a.lat,lng:+a.lng}; const B={lat:+b.lat,lng:+b.lng}; setOrigin(A); setDest(B); traceRoute(A, B) }} />
         </section>
       </main>
     </div>

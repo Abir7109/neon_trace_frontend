@@ -21,7 +21,7 @@ function toLL(p) {
   return null
 }
 
-export default function MapView({ origin, dest, route, onMapClicks }) {
+export default function MapView({ origin, dest, route, self, onMapClicks }) {
   const mapRef = useRef(null)
   const layerRef = useRef({})
   const clickState = useRef({ step: 0, a: null })
@@ -49,7 +49,8 @@ export default function MapView({ origin, dest, route, onMapClicks }) {
 
     const aMarker = L.marker([0, 0], { icon: makePin('#00ffd0') })
     const bMarker = L.marker([0, 0], { icon: makePin('#008170') })
-    layerRef.current = { glow, halo, aMarker, bMarker }
+    const selfMarker = L.circleMarker([0, 0], { radius: 7, color: '#00ffd0', weight: 2, fillColor: '#00ffd0', fillOpacity: 0.6 }).bindTooltip('You', { permanent: false })
+    layerRef.current = { glow, halo, aMarker, bMarker, selfMarker }
 
     map.on('click', (e) => {
       if (clickState.current.step === 0) {
@@ -106,5 +107,13 @@ export default function MapView({ origin, dest, route, onMapClicks }) {
     return () => clearInterval(timer)
   }, [route])
 
-  return <div id="map" className="map" />
+  // Live self marker
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !self) return
+    const { selfMarker } = layerRef.current
+    selfMarker.setLatLng(self).addTo(map)
+  }, [self])
+
+  return <div id=\"map\" className=\"map\" />
 }
