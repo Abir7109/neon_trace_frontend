@@ -28,7 +28,7 @@ jobs:
 
       - name: Ensure Android platform
         run: |
-          npm install --no-audit --no-fund @capacitor/android@latest
+          npm install --no-audit --no-fund @capacitor/android@^6
           npm run cap:add:android || npx cap add android
           npx cap sync android
 
