@@ -21,6 +21,8 @@ export default function App() {
   const [me, setMe] = useState(null) // { deviceId, deviceName, ip, lastLocation }
   const [self, setSelf] = useState(null) // live location {lat,lng}
   const [useSelfAsOrigin, setUseSelfAsOrigin] = useState(true)
+  const [locError, setLocError] = useState(null) // 1=denied, 2=unavailable
+  const [page, setPage] = useState('home') // home|about|api
   const watchRef = useRef(null)
 
   const sfx = useMemo(() => new SFX({ enabled: !mute }), [mute])
@@ -157,7 +159,7 @@ export default function App() {
         await Geolocation.requestPermissions()
         if (watchRef.current) Geolocation.clearWatch({ id: watchRef.current })
         watchRef.current = await Geolocation.watchPosition({ enableHighAccuracy: true }, async (pos, err) => {
-          if (err) { setLogs((p)=>[...p, `geo_error=${err.code||'err'}`]); return }
+          if (err) { setLocError(err.code||1); setLogs((p)=>[...p, `geo_error=${err.code||'err'}`]); return }
           if (!pos) return
           const coords = { lat: pos.coords.latitude, lng: pos.coords.longitude }
           setSelf(coords)
@@ -183,6 +185,7 @@ export default function App() {
           if (resp.ok && data?.me) setMe(data.me)
         } catch {}
       }, (err) => {
+        setLocError(err.code)
         setLogs((p)=>[...p, `geo_error=${err.code}`])
       }, { enableHighAccuracy: true, maximumAge: 5000, timeout: 10000 })
       setLogs((p)=>[...p,'geolocation=watching'])
@@ -199,15 +202,23 @@ export default function App() {
     setMe((m) => ({ ...(m||{}), ...next }))
   }
 
+  async function openAppSettings() {
+    try {
+      const { App } = await import('@capacitor/app')
+      await App.openUrl({ url: 'app-settings:' })
+    } catch {
+      window.alert('Please enable Location for Neon Trace in system settings.')
+    }
+  }
+
   return (
     <div className="app">
       <header className="header">
         <div className="logo" aria-label="logo">NEON TRACE ▓▓</div>
         <nav>
-          <a href="#">Home</a>
-          <a href="#">About</a>
-          <a href="#">API</a>
-          <a href="#">Admin</a>
+          <a href="#" onClick={(e)=>{e.preventDefault(); setPage('home')}}>Home</a>
+          <a href="#" onClick={(e)=>{e.preventDefault(); setPage('about')}}>About</a>
+          <a href="#" onClick={(e)=>{e.preventDefault(); setPage('api')}}>API</a>
         </nav>
       </header>
       <main className="main">
@@ -230,6 +241,7 @@ export default function App() {
             </div>
           </div>
 
+          {page === 'home' && (
           <div className="panel">
             <label>Origin</label>
             <input className="terminal" value={originText} onChange={(e) => setOriginText(e.target.value)} placeholder="lat,lng or place" />
@@ -248,6 +260,26 @@ export default function App() {
               <label><input type="checkbox" checked={mute} onChange={(e) => setMute(e.target.checked)} /> mute</label>
             </div>
           </div>
+          )}
+
+          {page === 'about' && (
+          <div className="panel">
+            <h3>About</h3>
+            <p style={{opacity:.85}}>
+              Built in the shadows. No names, no faces. Just paths, pulses, and neon.
+              Credits: Abir. Data: OpenStreetMap, routing by ORS.
+            </p>
+          </div>
+          )}
+
+          {page === 'api' && (
+          <div className="panel">
+            <h3>API</h3>
+            <p className="small">POST /api/route {`{ origin:{lat,lng}, destination:{lat,lng}, profile }`}</p>
+            <p className="small">GET /api/logs — recent analyses</p>
+            <p className="small">GET/POST /api/me — device profile</p>
+          </div>
+          )}
 
           <div className="panel console">
             <div className="console-log">
@@ -258,12 +290,24 @@ export default function App() {
             <ConsoleInput onEnter={onConsoleEnter} />
           </div>
           <div className="footer">
-            <a href="https://github.com/" target="_blank">GitHub</a>
-            <span>Using OpenStreetMap + ORS</span>
+            <span>© Abir • anonymous build • OSM + ORS</span>
+            <a href="https://github.com/Abir7109" target="_blank">GitHub</a>
           </div>
         </section>
         <section className="right">
           <MapView origin={origin} dest={dest} route={route} self={self} onMapClicks={({ a, b }) => { const A={lat:+a.lat,lng:+a.lng}; const B={lat:+b.lat,lng:+b.lng}; setOrigin(A); setDest(B); traceRoute(A, B) }} />
+          {locError && (
+            <div className="overlay">
+              <div className="overlay-card">
+                <div className="overlay-title">Location {locError===1? 'permission':'services'} needed</div>
+                <p className="small">Enable location and grant permission to show your live position.</p>
+                <div className="row">
+                  <button className="btn" onClick={openAppSettings}>Open settings</button>
+                  <button className="btn" onClick={()=>{ setLocError(null); requestAndWatchLocation() }}>Retry</button>
+                </div>
+              </div>
+            </div>
+          )}
         </section>
       </main>
     </div>

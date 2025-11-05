@@ -44,8 +44,13 @@ nav a:hover { color: var(--text); text-shadow: 0 0 4px var(--glow) }
 .footer a { color: var(--muted) }
 .footer a:hover { color: var(--text) }
 
-.map { position: absolute; inset: 0; filter: drop-shadow(0 0 8px rgba(0, 225, 208, 0.2)); background: #0A0A0A }
+.map { position: absolute; inset: 0; filter: drop-shadow(0 0 8px rgba(0, 225, 208, 0.2)); background: #0A0A0A; border: 1px solid #0b2622; border-radius: 10px; box-shadow: 0 0 0 1px rgba(0,255,208,0.08) inset }
 .leaflet-pane .leaflet-interactive { filter: drop-shadow(0 0 6px rgba(0, 225, 208, 0.7)); }
+
+/* overlay for permissions */
+.overlay { position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none }
+.overlay-card { pointer-events: auto; background: rgba(7,9,11,0.9); border: 1px solid #0b2622; border-radius: 8px; padding: 12px; color: var(--text); box-shadow: 0 0 24px rgba(0,255,208,0.15) }
+.overlay-title { color: var(--glow); margin-bottom: 6px; font-weight: 700 }
 
 /* neon pins */
 .neon-pin-wrap { }
