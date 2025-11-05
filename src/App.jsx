@@ -20,6 +20,7 @@ export default function App() {
   const [consoleInput, setConsoleInput] = useState('')
   const [me, setMe] = useState(null) // { deviceId, deviceName, ip, lastLocation }
   const [self, setSelf] = useState(null) // live location {lat,lng}
+  const [useSelfAsOrigin, setUseSelfAsOrigin] = useState(true)
   const watchRef = useRef(null)
 
   const sfx = useMemo(() => new SFX({ enabled: !mute }), [mute])
@@ -46,6 +47,14 @@ export default function App() {
       requestAndWatchLocation()
     })()
   }, [])
+
+  // When live location updates, optionally mirror into origin and input
+  useEffect(() => {
+    if (self && useSelfAsOrigin) {
+      setOrigin(self)
+      setOriginText(`${Number(self.lat).toFixed(5)},${Number(self.lng).toFixed(5)}`)
+    }
+  }, [self, useSelfAsOrigin])
 
   async function resolveCoord(text) {
     // coord literal: lat,lng
@@ -214,6 +223,10 @@ export default function App() {
             <div className="row">
               <button className="btn" onClick={shareLocation}>Share Live Location</button>
               {me?.ip && <span style={{fontSize:12,opacity:.7}}>ip {me.ip}</span>}
+            </div>
+            <div className="row small">
+              <label><input type="checkbox" checked={useSelfAsOrigin} onChange={(e)=>setUseSelfAsOrigin(e.target.checked)} /> use my location as origin</label>
+              <button className="btn" onClick={()=>{ setUseSelfAsOrigin(false); setOrigin(null); setOriginText('') }}>Clear origin</button>
             </div>
           </div>
 

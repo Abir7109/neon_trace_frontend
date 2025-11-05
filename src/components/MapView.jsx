@@ -107,12 +107,13 @@ export default function MapView({ origin, dest, route, self, onMapClicks }) {
     return () => clearInterval(timer)
   }, [route])
 
-  // Live self marker
+  // Live self marker and auto-center when updated
   useEffect(() => {
     const map = mapRef.current
     if (!map || !self) return
     const { selfMarker } = layerRef.current
     selfMarker.setLatLng(self).addTo(map)
+    try { map.flyTo(self, Math.max(map.getZoom(), 14), { duration: 0.5 }) } catch {}
   }, [self])
 
   return <div id="map" className="map" />
