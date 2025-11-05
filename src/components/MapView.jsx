@@ -115,5 +115,5 @@ export default function MapView({ origin, dest, route, self, onMapClicks }) {
     selfMarker.setLatLng(self).addTo(map)
   }, [self])
 
-  return <div id=\"map\" className=\"map\" />
+  return <div id="map" className="map" />
 }
