@@ -28,8 +28,9 @@ jobs:
 
       - name: Ensure Android platform
         run: |
-          npx cap add android || true
-          npx cap sync
+          npm install --no-audit --no-fund @capacitor/android@latest
+          npm run cap:add:android || npx cap add android
+          npx cap sync android
 
       - name: Download app icon
         run: |
