@@ -21,7 +21,8 @@ export default function App() {
   const [me, setMe] = useState(null) // { deviceId, deviceName, ip, lastLocation }
   const [self, setSelf] = useState(null) // live location {lat,lng}
   const [useSelfAsOrigin, setUseSelfAsOrigin] = useState(true)
-  const [locError, setLocError] = useState(null) // 1=denied, 2=unavailable
+  const [locError, setLocError] = useState(null) // 1=denied, 2=unavailable/timeout
+  const [locErrMsg, setLocErrMsg] = useState('')
   const [page, setPage] = useState('home') // home|about|api
   const watchRef = useRef(null)
 
@@ -157,9 +158,33 @@ export default function App() {
       try {
         const { Geolocation } = await import('@capacitor/geolocation')
         await Geolocation.requestPermissions()
+
+        // First: get a single fix with generous timeout
+        try {
+          const first = await Geolocation.getCurrentPosition({ enableHighAccuracy: true, timeout: 30000 })
+          if (first?.coords) {
+            const coords = { lat: first.coords.latitude, lng: first.coords.longitude }
+            setSelf(coords)
+            try {
+              const resp = await fetch(`${API_BASE}/api/me`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ deviceId: dev.deviceId, deviceName: dev.deviceName, location: coords }) })
+              const data = await resp.json().catch(()=>null)
+              if (resp.ok && data?.me) setMe(data.me)
+            } catch {}
+          }
+        } catch (e) {
+          // Retry with lower accuracy and longer timeout
+          try {
+            const coarse = await Geolocation.getCurrentPosition({ enableHighAccuracy: false, timeout: 60000 })
+            if (coarse?.coords) setSelf({ lat: coarse.coords.latitude, lng: coarse.coords.longitude })
+          } catch (e2) {
+            setLocErrMsg(e2.message||'timeout'); setLocError(3)
+          }
+        }
+
+        // Start watch after first fix attempt
         if (watchRef.current) Geolocation.clearWatch({ id: watchRef.current })
         watchRef.current = await Geolocation.watchPosition({ enableHighAccuracy: true }, async (pos, err) => {
-          if (err) { setLocError(err.code||1); setLogs((p)=>[...p, `geo_error=${err.code||'err'}`]); return }
+          if (err) { setLocErrMsg(err.message||''); setLocError(err.code||1); setLogs((p)=>[...p, `geo_error=${err.code||'err'}`]); return }
           if (!pos) return
           const coords = { lat: pos.coords.latitude, lng: pos.coords.longitude }
           setSelf(coords)
@@ -175,6 +200,29 @@ export default function App() {
 
       // Fallback to browser geolocation
       if (!('geolocation' in navigator)) { setLogs((p)=>[...p,'error=geolocation_unavailable']); return }
+
+      // First fix with 30s, then watch
+      const firstFix = await new Promise((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy: true, maximumAge: 0, timeout: 30000 })
+      }).catch(async (e) => {
+        // Retry coarse with longer timeout
+        setLocErrMsg(e.message||'');
+        try {
+          return await new Promise((resolve2, reject2) => navigator.geolocation.getCurrentPosition(resolve2, reject2, { enableHighAccuracy: false, maximumAge: 15000, timeout: 60000 }))
+        } catch (e2) {
+          setLocErrMsg(e2.message||''); setLocError(3); return null
+        }
+      })
+      if (firstFix?.coords) {
+        const coords = { lat: firstFix.coords.latitude, lng: firstFix.coords.longitude }
+        setSelf(coords)
+        try {
+          const resp = await fetch(`${API_BASE}/api/me`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ deviceId: dev.deviceId, deviceName: dev.deviceName, location: coords }) })
+          const data = await resp.json().catch(()=>null)
+          if (resp.ok && data?.me) setMe(data.me)
+        } catch {}
+      }
+
       if (watchRef.current) navigator.geolocation.clearWatch(watchRef.current)
       watchRef.current = navigator.geolocation.watchPosition(async (pos) => {
         const coords = { lat: pos.coords.latitude, lng: pos.coords.longitude }
@@ -185,9 +233,9 @@ export default function App() {
           if (resp.ok && data?.me) setMe(data.me)
         } catch {}
       }, (err) => {
-        setLocError(err.code)
+        setLocErrMsg(err.message||''); setLocError(err.code)
         setLogs((p)=>[...p, `geo_error=${err.code}`])
-      }, { enableHighAccuracy: true, maximumAge: 5000, timeout: 10000 })
+      }, { enableHighAccuracy: true, maximumAge: 5000, timeout: 30000 })
       setLogs((p)=>[...p,'geolocation=watching'])
     } catch (e) {
       setLogs((p)=>[...p,'error='+e.message])
@@ -300,7 +348,7 @@ export default function App() {
             <div className="overlay">
               <div className="overlay-card">
                 <div className="overlay-title">Location {locError===1? 'permission':'services'} needed</div>
-                <p className="small">Enable location and grant permission to show your live position.</p>
+                <p className="small">Enable location and grant permission to show your live position. {locErrMsg && `(detail: ${locErrMsg})`}</p>
                 <div className="row">
                   <button className="btn" onClick={openAppSettings}>Open settings</button>
                   <button className="btn" onClick={()=>{ setLocError(null); requestAndWatchLocation() }}>Retry</button>
