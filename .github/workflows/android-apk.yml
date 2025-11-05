@@ -32,6 +32,15 @@ jobs:
           npm run cap:add:android || npx cap add android
           npx cap sync android
 
+      - name: Patch AndroidManifest with location permissions
+        run: |
+          MANIFEST=android/app/src/main/AndroidManifest.xml
+          echo "Patching $MANIFEST"
+          # Insert permissions if missing
+          grep -q 'ACCESS_FINE_LOCATION' "$MANIFEST" || sed -i '1s;^;<uses-permission android:name=\"android.permission.ACCESS_FINE_LOCATION\"/>\n;' "$MANIFEST"
+          grep -q 'ACCESS_COARSE_LOCATION' "$MANIFEST" || sed -i '1s;^;<uses-permission android:name=\"android.permission.ACCESS_COARSE_LOCATION\"/>\n;' "$MANIFEST"
+          grep -q 'android.hardware.location.gps' "$MANIFEST" || sed -i '1s;^;<uses-feature android:name=\"android.hardware.location.gps\"/>\n;' "$MANIFEST"
+
       - name: Download app icon
         run: |
           mkdir -p resources
