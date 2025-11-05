@@ -37,6 +37,7 @@ export default function App() {
     try {
       setBusy(true)
       setLogs([])
+      setRoute(null)
       sfx.type()
       // Guard: if aOverride is a click event or DOM node, ignore overrides
       const looksLikeEvent = (x) => !!(x && (x.nativeEvent || typeof x.preventDefault === 'function' || (x.target && (x.target.tagName || x.target.nodeType))))
@@ -44,8 +45,8 @@ export default function App() {
 
       const normalize = (p) => (p && typeof p.lat === 'number' && typeof p.lng === 'number') ? { lat: +p.lat, lng: +p.lng } : null
       const [aRaw, bRaw] = await Promise.all([
-        aOverride ?? (origin ? Promise.resolve(origin) : resolveCoord(originText)),
-        bOverride ?? (dest ? Promise.resolve(dest) : resolveCoord(destText)),
+        aOverride ?? resolveCoord(originText),
+        bOverride ?? resolveCoord(destText),
       ])
       const a = normalize(aRaw)
       const b = normalize(bRaw)
