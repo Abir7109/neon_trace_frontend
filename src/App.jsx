@@ -64,7 +64,12 @@ export default function App() {
         headers: { 'Content-Type': 'application/json' },
         body: payload,
       })
-      if (!resp.ok) throw new Error('Routing failed')
+      if (!resp.ok) {
+        let detail = ''
+        try { const err = await resp.json(); detail = JSON.stringify(err) } catch {}
+        setLogs((prev) => [...prev, `server_error status=${resp.status} ${detail}`])
+        throw new Error('Routing failed')
+      }
       const data = await resp.json()
       setRoute({ coords: data.route.coordinates, distance: data.route.distance, duration: data.route.duration })
       // Simulate streaming logs
