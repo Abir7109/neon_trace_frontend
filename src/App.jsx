@@ -163,7 +163,7 @@ export default function App() {
   }
 
   return (
-    <div className=\"app\">
+    <div className="app">
       <header className="header">
         <div className="logo" aria-label="logo">NEON TRACE ▓▓</div>
         <nav>
@@ -175,21 +175,21 @@ export default function App() {
       </header>
       <main className="main">
         <section className="left">
-          <div className=\"panel\">
+          <div className="panel">
             <label>Device</label>
-            <div className=\"row\">
-              <input className=\"terminal\" value={(me?.deviceName)||''} onChange={(e)=>updateDeviceName(e.target.value)} placeholder=\"device name\" />
+            <div className="row">
+              <input className="terminal" value={(me?.deviceName)||''} onChange={(e)=>updateDeviceName(e.target.value)} placeholder="device name" />
             </div>
-            <div className=\"row small\">
+            <div className="row small">
               <div style={{opacity:.8}}>id: {(me?.deviceId)||'…'}</div>
             </div>
-            <div className=\"row\">
-              <button className=\"btn\" onClick={shareLocation}>Share Live Location</button>
+            <div className="row">
+              <button className="btn" onClick={shareLocation}>Share Live Location</button>
               {me?.ip && <span style={{fontSize:12,opacity:.7}}>ip {me.ip}</span>}
             </div>
           </div>
 
-          <div className=\"panel\">
+          <div className="panel">
             <label>Origin</label>
             <input className="terminal" value={originText} onChange={(e) => setOriginText(e.target.value)} placeholder="lat,lng or place" />
             <label>Destination</label>
