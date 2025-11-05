@@ -1,0 +1,64 @@
+name: Build Android APK (Capacitor)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+
+jobs:
+  build-android:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/client
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install deps
+        run: npm ci || npm install
+
+      - name: Build web app
+        run: npm run build
+
+      - name: Ensure Android platform
+        run: |
+          npx cap add android || true
+          npx cap sync
+
+      - name: Download app icon
+        run: |
+          mkdir -p resources
+          curl -L "https://i.postimg.cc/LXRV14wV/a-beautiful-and-aest.png" -o resources/icon.png
+
+      - name: Generate Android icons (adaptive)
+        run: npx --yes @capacitor/assets generate --android --icon resources/icon.png || echo "icon generation skipped"
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android build tools
+        run: |
+          sdkmanager --install "platform-tools" "platforms;android-34" "build-tools;34.0.0"
+
+      - name: Build debug APK
+        run: |
+          cd android
+          ./gradlew assembleDebug
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: neon-trace-debug.apk
+          path: apps/client/android/app/build/outputs/apk/debug/app-debug.apk
