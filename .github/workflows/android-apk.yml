@@ -36,10 +36,14 @@ jobs:
         run: |
           MANIFEST=android/app/src/main/AndroidManifest.xml
           echo "Patching $MANIFEST"
-          # Insert permissions if missing
-          grep -q 'ACCESS_FINE_LOCATION' "$MANIFEST" || sed -i '1s;^;<uses-permission android:name=\"android.permission.ACCESS_FINE_LOCATION\"/>\n;' "$MANIFEST"
-          grep -q 'ACCESS_COARSE_LOCATION' "$MANIFEST" || sed -i '1s;^;<uses-permission android:name=\"android.permission.ACCESS_COARSE_LOCATION\"/>\n;' "$MANIFEST"
-          grep -q 'android.hardware.location.gps' "$MANIFEST" || sed -i '1s;^;<uses-feature android:name=\"android.hardware.location.gps\"/>\n;' "$MANIFEST"
+          if ! grep -q 'ACCESS_FINE_LOCATION' "$MANIFEST"; then
+            awk 'BEGIN{done=0} {print; if(!done && $0 ~ /<manifest[^>]*>/){
+              print "    <uses-permission android:name=\"android.permission.ACCESS_FINE_LOCATION\"/>";
+              print "    <uses-permission android:name=\"android.permission.ACCESS_COARSE_LOCATION\"/>";
+              print "    <uses-feature android:name=\"android.hardware.location.gps\"/>";
+              done=1
+            }}' "$MANIFEST" > $MANIFEST.tmp && mv $MANIFEST.tmp "$MANIFEST"
+          fi
 
       - name: Download app icon
         run: |
