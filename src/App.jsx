@@ -129,9 +129,23 @@ export default function App() {
     }
   }
 
-  function onConsoleEnter(cmd) {
+  async function onConsoleEnter(cmd) {
     const text = cmd.trim()
     if (!text) return
+
+    // clear
+    if (/^clear$/i.test(text)) { setLogs([]); return }
+
+    // help
+    if (/^(help|\?)$/i.test(text)) {
+      setLogs((p)=>[...p,
+        'commands: help, clear, trace --from "A" --to "B" [--profile p]',
+        '          sudo hack, matrix, neofetch, cowsay "msg", dice, coin, ping, whoami, geo'
+      ])
+      return
+    }
+
+    // fun: sudo hack
     if (/^sudo\s+hac?k/i.test(text)) {
       document.body.classList.add('hack-sequence')
       sfx.hack()
@@ -139,6 +153,74 @@ export default function App() {
       setLogs((prev) => [...prev, 'ELEVATING PRIVILEGES… [denied]', '…just kidding 😅'])
       return
     }
+
+    // fun: matrix
+    if (/^matrix$/i.test(text)) {
+      setHackerMode(true)
+      setLogs((p)=>[...p,'wake_up,neo','the_matrix_has_you','follow_the_white_rabbit'])
+      return
+    }
+
+    // fun: neofetch
+    if (/^neofetch$/i.test(text)) {
+      const ua = navigator.userAgent || ''
+      const plat = navigator.platform || ''
+      const selfLine = self ? `${Number(self.lat).toFixed(5)},${Number(self.lng).toFixed(5)}` : 'n/a'
+      const lines = [
+        'neon-trace ▓▓',
+        `device: ${(me?.deviceName)||'unknown'}`,
+        `id: ${(me?.deviceId)||'…'}`,
+        `ip: ${(me?.ip)||'…'}`,
+        `self: ${selfLine}`,
+        `ua: ${plat} ${ua}`,
+      ]
+      setLogs((p)=>[...p, ...lines])
+      return
+    }
+
+    // fun: cowsay "msg"
+    const cowMatch = text.match(/^cowsay\s+(?:\"([^\"]+)\"|(.+))$/i)
+    if (cowMatch) {
+      const msg = (cowMatch[1]||cowMatch[2]||'moo').trim()
+      const top = '  ' + '_'.repeat(msg.length+2)
+      const mid = ` < ${msg} >`
+      const bot = '  ' + '-'.repeat(msg.length+2)
+      const cow = [
+        top,
+        mid,
+        bot,
+        '        \\   ^__^',
+        '         \\  (oo)\\_______',
+        '            (__)\\       )\\/\\',
+        '                ||----w |',
+        '                ||     ||',
+      ]
+      setLogs((p)=>[...p, ...cow])
+      return
+    }
+
+    // fun: dice / coin
+    if (/^(dice|roll)$/i.test(text)) { setLogs((p)=>[...p, `dice=${1+Math.floor(Math.random()*6)}`]); return }
+    if (/^(coin|flip)$/i.test(text)) { setLogs((p)=>[...p, `coin=${Math.random()<0.5?'heads':'tails'}`]); return }
+
+    // ping backend
+    if (/^ping$/i.test(text)) {
+      try {
+        const t0 = performance.now()
+        const r = await fetch(`${API_BASE}/`)
+        const dt = Math.round(performance.now()-t0)
+        setLogs((p)=>[...p, `ping ${dt}ms status=${r.status}`])
+      } catch (e) {
+        setLogs((p)=>[...p, `ping error=${e.message}`])
+      }
+      return
+    }
+
+    // whoami / geo
+    if (/^whoami$/i.test(text)) { setLogs((p)=>[...p, `name=${(me?.deviceName)||'unknown'} id=${(me?.deviceId)||'…'} ip=${(me?.ip)||'…'}`]); return }
+    if (/^geo$/i.test(text)) { setLogs((p)=>[...p, self ? `self=${self.lat.toFixed(5)},${self.lng.toFixed(5)}` : 'self=unknown']); return }
+
+    // trace command
     const m = text.match(/trace\s+--from\s+\"([^\"]+)\"\s+--to\s+\"([^\"]+)\"(?:\s+--profile\s+(\S+))?/i)
     if (m) {
       setOrigin(null); setDest(null)
@@ -146,9 +228,10 @@ export default function App() {
       setDestText(m[2])
       if (m[3]) setProfile(m[3])
       traceRoute()
-    } else {
-      setLogs((prev) => [...prev, 'unknown_command'])
+      return
     }
+
+    setLogs((prev) => [...prev, 'unknown_command'])
   }
 
   async function requestAndWatchLocation() {
