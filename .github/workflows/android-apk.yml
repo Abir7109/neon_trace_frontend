@@ -66,44 +66,13 @@ jobs:
         run: |
           sdkmanager --install "platform-tools" "platforms;android-34" "build-tools;34.0.0"
 
-      - name: Configure signing (if secrets provided)
-        if: ${{ secrets.ANDROID_KEYSTORE_BASE64 && secrets.ANDROID_KEYSTORE_PASSWORD && secrets.ANDROID_KEY_ALIAS && secrets.ANDROID_KEY_PASSWORD }}
-        run: |
-          mkdir -p android/app
-          echo "Writing keystore"
-          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > android/app/keystore.jks
-          echo "Patching build.gradle for release signing"
-          # Insert signingConfigs.release and switch buildTypes.release to use it
-          awk 'BEGIN{ins=0} {print $0; if(!ins && $0 ~ /^android\s*\{/){
-            print "    signingConfigs {";
-            print "        release {";
-            print "            storeFile file(\"keystore.jks\")";
-            print "            storePassword System.getenv(\"ANDROID_KEYSTORE_PASSWORD\")";
-            print "            keyAlias System.getenv(\"ANDROID_KEY_ALIAS\")";
-            print "            keyPassword System.getenv(\"ANDROID_KEY_PASSWORD\")";
-            print "        }";
-            print "    }";
-            ins=1
-          }}' android/app/build.gradle > android/app/build.gradle.tmp && mv android/app/build.gradle.tmp android/app/build.gradle
-          sed -i 's/signingConfig signingConfigs.debug/signingConfig signingConfigs.release/g' android/app/build.gradle || true
-
-      - name: Build APK (debug or release)
-        env:
-          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+      - name: Build debug APK
         run: |
           cd android
-          if [ -n "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" ]; then
-            ./gradlew assembleRelease
-          else
-            ./gradlew assembleDebug
-          fi
+          ./gradlew assembleDebug
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: neon-trace-${{ secrets.ANDROID_KEYSTORE_BASE64 && 'release' || 'debug' }}.apk
-          path: |
-            android/app/build/outputs/apk/release/app-release.apk
-            android/app/build/outputs/apk/debug/app-debug.apk
+          name: neon-trace-debug.apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
